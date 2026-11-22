@@ -38,6 +38,40 @@ def _longest_first(tests: list[int], durations: list[int], worker_count: int):
     return loads, workers
 
 
+def _rebalance(workers: list[list[int]], loads: list[int], durations: list[int]) -> None:
+    """Local search after LPT: move or swap tests off the busiest worker while that lowers it."""
+    for _ in range(200):
+        top = loads.index(max(loads))
+        best = None  # (new peak of the pair, kind, ...)
+        for other in range(len(workers)):
+            if other == top:
+                continue
+            for i, test in enumerate(workers[top]):
+                d = durations[test]
+                peak = max(loads[top] - d, loads[other] + d)
+                if peak < loads[top] and (best is None or peak < best[0]):
+                    best = (peak, "move", other, i, None)
+                for j, swap in enumerate(workers[other]):
+                    e = durations[swap]
+                    if e >= d:
+                        continue
+                    peak = max(loads[top] - d + e, loads[other] + d - e)
+                    if peak < loads[top] and (best is None or peak < best[0]):
+                        best = (peak, "swap", other, i, j)
+        if best is None:
+            return
+        _, kind, other, i, j = best
+        test = workers[top].pop(i)
+        loads[top] -= durations[test]
+        if kind == "swap":
+            swap = workers[other].pop(j)
+            loads[other] -= durations[swap]
+            workers[top].append(swap)
+            loads[top] += durations[swap]
+        workers[other].append(test)
+        loads[other] += durations[test]
+
+
 def pack(tests, durations: list[int]) -> Packing:
     """The cheapest longest-processing-time split over 1..8 workers. Equal durations keep the
     order the tests come in (a set's own order), which decides who shares a worker."""
@@ -47,6 +81,8 @@ def pack(tests, durations: list[int]) -> Packing:
     best = None
     for worker_count in range(1, min(MAX_WORKERS, len(ordered)) + 1):
         loads, workers = _longest_first(ordered, durations, worker_count)
+        if worker_count > 1 and len(ordered) <= 400:
+            _rebalance(workers, loads, durations)
         cost = max(loads) + WORKER_OVERHEAD_MS * worker_count
         if best is None or cost < best.cost_ms:
             best = Packing(cost, workers, loads)
@@ -81,7 +117,7 @@ class CostModel:
         # the scoring machine ran ~2-5x faster than the one the costs were measured on
         self.cpu_scale = float(os.environ.get("RIPPLE_CPU_SCALE", "0.5"))
         # tests whose run alone would take more than this are never run (pool-heavy tests)
-        self.max_run_s = float(os.environ.get("RIPPLE_MAX_RUN_S", "3.0"))
+        self.max_run_s = float(os.environ.get("RIPPLE_MAX_RUN_S", "30.0"))
         self.swap_start_s = float(os.environ.get("RIPPLE_SWAP_START_S", "0.1"))
         self.too_costly = {i for i, cpu in enumerate(self.run_cpu) if cpu * self.cpu_scale > self.max_run_s}
 
