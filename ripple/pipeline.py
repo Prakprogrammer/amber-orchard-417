@@ -170,7 +170,7 @@ class Pipeline:
             self._keep_reaching_passes(diffs, candidates, reductions, notes)
         if may_run and not everything:
             self._reduce(impact, diffs, patch, candidates, data_readers, hot_swap, reductions, notes)
-        if may_run and not everything and candidates:
+        if may_run and not everything and candidates and not impact.certain:
             plan = triage(candidates, data_readers, hot_swap, pricing, reductions.dialect_reduced, self.model,
                           self.tests, self.fixtures, settings)
         else:

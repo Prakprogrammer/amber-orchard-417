@@ -76,7 +76,7 @@ def triage(candidates: set[int], data_readers: set[int], hot_swap: bool, pricing
 
     budget = settings.swap_commit_budget_s if hot_swap else settings.fresh_commit_budget_s
     if sum(cpu(t) for t in runnable - dialect_reduced) <= budget:
-        return Triage(listed, runnable, held, shielded, False)
+        return _free_riders(Triage(listed, runnable, held, shielded, False), tests, dialect_reduced)
     run, spent = set(), 0.0
     # shielded first, then the most listing time saved per CPU second
     for test in sorted(runnable, key=lambda t: (t not in shielded, -(seconds[t] + 0.002) / (cpu(t) + 0.002))):
@@ -86,7 +86,29 @@ def triage(candidates: set[int], data_readers: set[int], hot_swap: bool, pricing
             spent += cpu(test)
         run.add(test)
     listed |= runnable - run
-    return Triage(listed, run, held, shielded, bool(runnable - run))
+    return _free_riders(Triage(listed, run, held, shielded, bool(runnable - run)), tests, dialect_reduced)
+
+
+def _free_riders(plan: Triage, tests: list[dict], dialect_reduced: set[int]) -> Triage:
+    """Listing a test that fits in the spare time of the workers this commit lists anyway adds
+    nothing to its cost, while running it costs CPU: list such tests instead (not the ones
+    whose verdicts decide about held tests)."""
+    from .costs import pack
+
+    if not plan.listed:
+        return plan
+    durations = [round(t["seconds"] * 1000) for t in tests]
+    packing = pack(plan.listed, durations)
+    loads, ceiling = list(packing.loads), max(packing.loads)
+    for test in sorted(plan.run, key=lambda t: -durations[t]):
+        if test in plan.shielded or test in dialect_reduced:
+            continue
+        lightest = loads.index(min(loads))
+        if loads[lightest] + durations[test] <= ceiling:
+            loads[lightest] += durations[test]
+            plan.run.discard(test)
+            plan.listed.add(test)
+    return plan
 
 
 def held_tests_to_list(held: set[int], job, failing_after_run: set[int], certain: bool, budget_cut: bool,
