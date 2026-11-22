@@ -358,7 +358,12 @@ class Pipeline:
             if job is None or job.killed or not passed:
                 log(f"{plan.commit}: import-time edit with failures: every test not seen passing")
                 listed |= set(range(len(self.tests))) - passed
-        return listed
+        # gamble: a long test is listed only when it ran here and failed
+        cap = float(os.environ.get("RIPPLE_GAMBLE_MAX_LISTED_S", "5.0"))
+        failed_here = set()
+        if job is not None:
+            failed_here = {self.position[t] for t, r in job.verdicts.items() if r["verdict"] != "pass" and t in self.position}
+        return {t for t in listed if self.tests[t]["seconds"] <= cap or t in failed_here}
 
     def run(self) -> list[str]:
         os.environ.setdefault("OMP_NUM_THREADS", "1")
