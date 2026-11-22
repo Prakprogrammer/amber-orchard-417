@@ -1,10 +1,14 @@
 """``python -m ripple``: one JSON line per commit, {"commit": id, "workers": [[test, ...], ...]}."""
 
-import sys
+import gc
+
+gc.disable()  # millions of atlas objects: collector passes cost more CPU than the memory they free
+
+import sys  # noqa: E402
 import traceback
 
-from .pipeline import Pipeline, list_everything
-from .settings import Settings
+from .pipeline import Pipeline, list_everything  # noqa: E402
+from .settings import Settings  # noqa: E402
 
 
 def main() -> None:
