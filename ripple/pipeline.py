@@ -355,15 +355,15 @@ class Pipeline:
             passed = set()
             if job is not None:
                 passed = {self.position[t] for t, r in job.verdicts.items() if r["verdict"] == "pass" and t in self.position}
-            if job is None or job.killed or listed - plan.plan.listed or not passed:
+            if job is None or job.killed or not passed:
                 log(f"{plan.commit}: import-time edit with failures: every test not seen passing")
                 listed |= set(range(len(self.tests))) - passed
         return listed
 
     def run(self) -> list[str]:
+        os.environ.setdefault("OMP_NUM_THREADS", "1")
         if self.settings.one_cpu and not self.settings.list_only:
             _pin_to_one_cpu()
-            os.environ.setdefault("OMP_NUM_THREADS", "1")
         self.load()
         plans = [self.plan(commit) for commit in self.commits]
         self.fit_budget(plans)

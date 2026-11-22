@@ -95,7 +95,7 @@ def held_tests_to_list(held: set[int], job, failing_after_run: set[int], certain
     comparison flips; otherwise those with a failing run test of their class or fixture file
     (or all, past ``many_failures`` failures)."""
     if (job is None or job.killed or not job.verdicts
-            or any(job.verdicts.get(t) is None for t in job.test_ids) or certain):
+            or any(job.verdicts.get(t) is None for t in job.test_ids)):
         return set(held)
     position = {t["id"]: i for i, t in enumerate(tests)}
     failing = {position[test_id] for test_id, report in job.verdicts.items()

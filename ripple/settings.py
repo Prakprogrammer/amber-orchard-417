@@ -66,7 +66,7 @@ class Settings:
     def from_environment(cls) -> "Settings":
         atlas = _text("ATLAS", os.path.join(_APP, "atlas"))
         cache = _text("CACHE", os.path.join(_APP, "cache"))
-        one_cpu = _switch("ONE_CPU", True)
+        one_cpu = _switch("ONE_CPU", False)
         return cls(
             data_dir=_text("DATA", "/data"),
             sqlglot_root=_text("SQLGLOT", "/opt/sqlglot"),
@@ -82,7 +82,7 @@ class Settings:
             use_comparisons=_switch("COMPARISONS", True),
             one_cpu=one_cpu,
             parallel=int(_number("PARALLEL", 1 if one_cpu else 2)),
-            seconds_per_commit=_number("SECONDS_PER_COMMIT", 3.4),
+            seconds_per_commit=_number("SECONDS_PER_COMMIT", 4.0),
             held_above_s=_number("HELD_ABOVE_S", 5.0),
             held_run_share=_number("HELD_RUN_SHARE", 0.6),
             always_run_below_s=_number("ALWAYS_RUN_BELOW_S", 0.5),
@@ -91,7 +91,7 @@ class Settings:
             dialect_base_s=_number("DIALECT_BASE_S", 1.0),
             swap_commit_budget_s=_number("SWAP_COMMIT_BUDGET_S", 60.0),
             fresh_commit_budget_s=_number("FRESH_COMMIT_BUDGET_S", 45.0),
-            budget_slack=_number("BUDGET_SLACK", 2.5),
+            budget_slack=_number("BUDGET_SLACK", 6.0),
             after_run_s=_number("AFTER_RUN_S", 1.0),
             after_certain_run_s=_number("AFTER_CERTAIN_RUN_S", 1.9),
             many_failures=int(_number("MANY_FAILURES", 100000)),
